@@ -18,11 +18,15 @@ void main() {
     test('discovers all dart files', () {
       // lib: button.dart, theme_data.dart, home_screen.dart, settings_screen.dart,
       //       widgets.dart, commented_imports.dart, conditional_import.dart,
-      //       show_hide.dart, part_parent.dart, part_child.dart の10ファイル
+      //       show_hide.dart, part_parent.dart, part_child.dart,
+      //       user.dart, user.g.dart, app_state.dart, app_state.freezed.dart,
+      //       user_card.dart, app_router.dart, app_router.gr.dart,
+      //       router_screen.dart の18ファイル
       // test: button_golden_test.dart, home_screen_golden_test.dart,
       //       settings_screen_test.dart, all_widgets_golden_test.dart,
-      //       show_hide_golden_test.dart, part_parent_golden_test.dart の6ファイル
-      expect(graph.allFiles.length, 16);
+      //       show_hide_golden_test.dart, part_parent_golden_test.dart,
+      //       user_card_golden_test.dart, router_screen_golden_test.dart の8ファイル
+      expect(graph.allFiles.length, 26);
     });
 
     test('builds forward dependencies correctly', () {

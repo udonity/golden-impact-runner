@@ -7,7 +7,7 @@ import '../analyzer/dependency_graph.dart';
 import '../analyzer/golden_test_detector.dart';
 import '../git/diff_provider.dart';
 
-enum OutputFormat { text, json }
+enum OutputFormat { text, json, command }
 
 class RunnerConfig {
   const RunnerConfig({
@@ -74,12 +74,11 @@ class Runner {
     }
 
     // 2. 変更ファイルを取得
+    final diffProvider = DiffProvider(projectRoot);
     Set<String> changedFiles;
     if (config.changedFiles.isNotEmpty) {
-      final diffProvider = DiffProvider(projectRoot);
       changedFiles = diffProvider.resolveExplicitFiles(config.changedFiles);
     } else {
-      final diffProvider = DiffProvider(projectRoot);
       try {
         changedFiles = await diffProvider.getChangedDartFiles(
           baseBranch: config.baseBranch,
@@ -90,6 +89,9 @@ class Runner {
         return 1;
       }
     }
+
+    // 2.5. 生成ファイルを元ファイルに正規化
+    changedFiles = GeneratedFileNormalizer.normalize(changedFiles);
 
     if (changedFiles.isEmpty) {
       if (config.verbose) {
@@ -140,7 +142,17 @@ class Runner {
     );
 
     // 6. 結果を出力
-    if (config.format == OutputFormat.json) {
+    if (config.format == OutputFormat.command) {
+      if (filteredTests.isNotEmpty) {
+        final sorted = filteredTests
+            .map((f) => p.relative(f, from: projectRoot))
+            .toList()
+          ..sort();
+        _out.writeln('flutter test ${sorted.join(' ')}');
+      }
+      // 影響テスト0件の場合は何も出力しない
+      return 0;
+    } else if (config.format == OutputFormat.json) {
       final output = {
         'changed_files': changedFiles
             .map((f) => p.relative(f, from: projectRoot))
@@ -204,8 +216,8 @@ class Runner {
         }
       } else if (c == '?') {
         buf.write('[^/]');
-      } else if (c == '.') {
-        buf.write(r'\.');
+      } else if (_regExpMetaChars.contains(c)) {
+        buf.write('\\$c');
       } else {
         buf.write(c);
       }
@@ -213,6 +225,22 @@ class Runner {
     buf.write(r'$');
     return RegExp(buf.toString());
   }
+
+  /// 正規表現でエスケープが必要なメタ文字。
+  static const _regExpMetaChars = {
+    '.',
+    '+',
+    '^',
+    r'$',
+    '|',
+    '\\',
+    '(',
+    ')',
+    '[',
+    ']',
+    '{',
+    '}',
+  };
 
   String? _readPackageName(String projectRoot) {
     final pubspecFile = File(p.join(projectRoot, 'pubspec.yaml'));

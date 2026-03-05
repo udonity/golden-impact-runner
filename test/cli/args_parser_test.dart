@@ -56,6 +56,11 @@ void main() {
         expect(config!.format, OutputFormat.text);
       });
 
+      test('--format command でcommand出力を指定できる', () {
+        final config = ArgsParser.parse(['--format', 'command']);
+        expect(config!.format, OutputFormat.command);
+      });
+
       test('--verbose で詳細出力を有効にできる', () {
         final config = ArgsParser.parse(['--verbose']);
         expect(config!.verbose, isTrue);
