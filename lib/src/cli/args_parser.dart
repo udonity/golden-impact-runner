@@ -1,9 +1,8 @@
 import 'runner.dart';
 
-/// Parses CLI arguments into [RunnerConfig].
+/// CLI 引数を [RunnerConfig] にパースする。
 ///
-/// Does not depend on `package:args` — keeps zero external deps for the
-/// runtime binary.
+/// `package:args` に依存しない — ランタイムバイナリの外部依存をゼロに保つ。
 class ArgsParser {
   static const _help = '''
 golden_impact_runner — Find Flutter Golden Tests affected by code changes.
@@ -20,7 +19,7 @@ Options:
   --help, -h          Show this help message
 ''';
 
-  /// Parse [args] and return a [RunnerConfig], or null if --help was requested.
+  /// [args] をパースして [RunnerConfig] を返す。--help が指定された場合は null。
   static RunnerConfig? parse(List<String> args) {
     String? projectRoot;
     var baseBranch = 'origin/main';

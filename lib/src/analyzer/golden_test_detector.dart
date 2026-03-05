@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Detects Golden Test files by scanning for `matchesGoldenFile` usage.
+/// `matchesGoldenFile` の使用を走査して Golden Test ファイルを検出する。
 class GoldenTestDetector {
   GoldenTestDetector(this.projectRoot);
 
@@ -10,12 +10,12 @@ class GoldenTestDetector {
 
   static final _goldenPattern = RegExp(r'matchesGoldenFile\s*\(');
 
-  /// Check if file content contains golden test assertions.
+  /// ファイル内容に golden test アサーションが含まれるか判定する。
   bool isGoldenTest(String content) {
     return _goldenPattern.hasMatch(content);
   }
 
-  /// Find all golden test files under test/ directory.
+  /// test/ ディレクトリ配下のすべての golden test ファイルを検索する。
   Set<String> findAllGoldenTests() {
     final testDir = Directory(p.join(projectRoot, 'test'));
     if (!testDir.existsSync()) return {};
@@ -34,14 +34,14 @@ class GoldenTestDetector {
     return goldenTests;
   }
 
-  /// From a set of impacted files, filter only those that are golden tests.
+  /// 影響を受けるファイル集合から golden test のみを抽出する。
   Set<String> filterGoldenTests(Set<String> impactedFiles) {
     final goldenTests = <String>{};
 
     for (final filePath in impactedFiles) {
       if (!filePath.endsWith('.dart')) continue;
 
-      // Only consider test files
+      // テストファイルのみ対象
       final relative = p.relative(filePath, from: projectRoot);
       if (!relative.startsWith('test${p.separator}')) continue;
 

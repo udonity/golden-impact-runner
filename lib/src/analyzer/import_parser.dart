@@ -2,28 +2,28 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Parses Dart import/export/part directives from file contents
-/// and resolves them to absolute file paths.
+/// Dart の import/export/part ディレクティブをパースし、
+/// 絶対ファイルパスに解決する。
 class ImportParser {
   ImportParser(this.projectRoot, this.packageName);
 
   final String projectRoot;
   final String packageName;
 
-  // Matches: import 'x'; export 'x';
+  // import 'x'; export 'x'; にマッチ
   static final _importExportPattern = RegExp(
     r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''',
     multiLine: true,
   );
 
-  // Matches: part 'x'; but NOT part of 'x';
-  // Uses negative lookahead to exclude `part of`.
+  // part 'x'; にマッチするが part of 'x'; にはマッチしない。
+  // `part of` を除外するために否定先読みを使用。
   static final _partPattern = RegExp(
     r'''^\s*part\s+(?!of\b)['"]([^'"]+)['"]''',
     multiLine: true,
   );
 
-  /// Extract all import/export/part URIs from Dart source content.
+  /// Dart ソースから import/export/part の URI をすべて抽出する。
   List<String> extractDependencyUris(String content) {
     final uris = <String>[];
 
@@ -38,27 +38,27 @@ class ImportParser {
     return uris;
   }
 
-  /// Resolve an import URI to an absolute file path, or null if it should be
-  /// ignored (e.g. dart: SDK imports, external packages).
+  /// import URI を絶対ファイルパスに解決する。
+  /// 無視すべき URI（dart: SDK や外部パッケージ）の場合は null を返す。
   String? resolveUri(String uri, String currentFilePath) {
-    // Ignore SDK imports
+    // SDK import は無視
     if (uri.startsWith('dart:')) return null;
 
-    // Package import for this project
+    // 自プロジェクトの package import
     if (uri.startsWith('package:$packageName/')) {
       final relativePath = uri.substring('package:$packageName/'.length);
       return p.normalize(p.join(projectRoot, 'lib', relativePath));
     }
 
-    // External package imports — ignore
+    // 外部パッケージの import は無視
     if (uri.startsWith('package:')) return null;
 
-    // Relative import
+    // 相対 import
     final dir = p.dirname(currentFilePath);
     return p.normalize(p.join(dir, uri));
   }
 
-  /// Parse a single file and return all resolved dependency paths.
+  /// 単一ファイルをパースし、解決済みの依存パスをすべて返す。
   Set<String> parseDependencies(String filePath) {
     final file = File(filePath);
     if (!file.existsSync()) return {};

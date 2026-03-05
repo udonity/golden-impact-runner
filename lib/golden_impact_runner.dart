@@ -1,7 +1,7 @@
-/// Flutter Golden Test impact analysis tool.
+/// Flutter Golden Test の影響解析ツール。
 ///
-/// Detects which Golden Tests are affected by code changes
-/// by building a dependency graph and traversing it.
+/// コード変更の影響を受ける Golden Test を、
+/// 依存グラフを構築・走査して検出する。
 library;
 
 export 'src/analyzer/dependency_graph.dart';

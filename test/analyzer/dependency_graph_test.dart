@@ -18,10 +18,10 @@ void main() {
     test('discovers all dart files', () {
       // lib: button.dart, theme_data.dart, home_screen.dart, settings_screen.dart,
       //       widgets.dart, commented_imports.dart, conditional_import.dart,
-      //       show_hide.dart, part_parent.dart, part_child.dart
+      //       show_hide.dart, part_parent.dart, part_child.dart の10ファイル
       // test: button_golden_test.dart, home_screen_golden_test.dart,
       //       settings_screen_test.dart, all_widgets_golden_test.dart,
-      //       show_hide_golden_test.dart, part_parent_golden_test.dart
+      //       show_hide_golden_test.dart, part_parent_golden_test.dart の6ファイル
       expect(graph.allFiles.length, 16);
     });
 
@@ -32,7 +32,7 @@ void main() {
       final deps = graph.dependsOn[buttonPath];
       expect(deps, isNotNull);
 
-      // button.dart imports ../models/theme_data.dart (flutter import is ignored)
+      // button.dart は ../models/theme_data.dart を import（flutter import は無視される）
       final themeDataPath = p.normalize(
         p.join(fixturesRoot, 'lib', 'src', 'models', 'theme_data.dart'),
       );
@@ -47,7 +47,7 @@ void main() {
       final reverseDeps = graph.dependedOnBy[buttonPath];
       expect(reverseDeps, isNotNull);
 
-      // button.dart is depended on by home_screen.dart
+      // button.dart は home_screen.dart から依存されている
       final homeScreenPath = p.normalize(
         p.join(fixturesRoot, 'lib', 'src', 'screens', 'home_screen.dart'),
       );
@@ -62,7 +62,7 @@ void main() {
 
         final impacted = graph.findImpactedFiles({themeDataPath});
 
-        // theme_data.dart → button.dart → home_screen.dart
+        // theme_data.dart → button.dart → home_screen.dart の推移的依存
         final buttonPath = p.normalize(
           p.join(fixturesRoot, 'lib', 'src', 'widgets', 'button.dart'),
         );
@@ -76,7 +76,7 @@ void main() {
 
         final impacted = graph.findImpactedFiles({themeDataPath});
 
-        // theme_data.dart → button.dart → home_screen.dart
+        // theme_data.dart → button.dart → home_screen.dart の推移的依存
         final homeScreenPath = p.normalize(
           p.join(fixturesRoot, 'lib', 'src', 'screens', 'home_screen.dart'),
         );
@@ -102,8 +102,8 @@ void main() {
           ),
         );
 
-        // Changing theme_data should not impact settings_screen
-        // (settings_screen has no dependency on theme_data or button)
+        // theme_data の変更は settings_screen に影響しない
+        // （settings_screen は theme_data や button に依存していない）
         final themeDataPath = p.normalize(
           p.join(fixturesRoot, 'lib', 'src', 'models', 'theme_data.dart'),
         );

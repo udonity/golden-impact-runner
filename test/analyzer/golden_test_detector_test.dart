@@ -49,7 +49,7 @@ void main() {
           p.join('test', 'screens', 'home_screen_golden_test.dart'),
         ]));
 
-        // settings_screen_test.dart is NOT a golden test
+        // settings_screen_test.dart は golden test ではない
         expect(
           relative,
           isNot(contains(

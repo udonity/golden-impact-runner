@@ -27,12 +27,12 @@ class RunnerConfig {
   final bool verbose;
 }
 
-/// Main orchestrator: ties together diff, graph, and detection.
+/// メインオーケストレーター: diff・グラフ・検出を統合する。
 class Runner {
   Future<int> run(RunnerConfig config) async {
     final projectRoot = p.normalize(p.absolute(config.projectRoot));
 
-    // 1. Resolve package name from pubspec.yaml
+    // 1. pubspec.yaml からパッケージ名を取得
     final packageName = _readPackageName(projectRoot);
     if (packageName == null) {
       stderr.writeln('Error: Could not read package name from pubspec.yaml');
@@ -43,7 +43,7 @@ class Runner {
       stderr.writeln('Project: $packageName ($projectRoot)');
     }
 
-    // 2. Get changed files
+    // 2. 変更ファイルを取得
     Set<String> changedFiles;
     if (config.changedFiles.isNotEmpty) {
       final diffProvider = DiffProvider(projectRoot);
@@ -75,7 +75,7 @@ class Runner {
       }
     }
 
-    // 3. Build dependency graph
+    // 3. 依存グラフを構築
     final graph = DependencyGraph.build(
       projectRoot: projectRoot,
       packageName: packageName,
@@ -88,7 +88,7 @@ class Runner {
       );
     }
 
-    // 4. Find all impacted files via BFS
+    // 4. BFS で影響ファイルをすべて検索
     final impactedFiles = graph.findImpactedFiles(changedFiles);
 
     if (config.verbose) {
@@ -98,11 +98,11 @@ class Runner {
       }
     }
 
-    // 5. Filter to golden tests
+    // 5. golden test のみにフィルタ
     final detector = GoldenTestDetector(projectRoot);
     final goldenTests = detector.filterGoldenTests(impactedFiles);
 
-    // 6. Output
+    // 6. 結果を出力
     if (config.format == OutputFormat.json) {
       final output = {
         'changed_files': changedFiles
@@ -137,7 +137,7 @@ class Runner {
     if (!pubspecFile.existsSync()) return null;
 
     final content = pubspecFile.readAsStringSync();
-    // Simple regex to extract name from pubspec.yaml without yaml dependency
+    // yaml パッケージに依存せず、正規表現で pubspec.yaml から name を抽出
     final match = RegExp(r'^name:\s*(\S+)', multiLine: true).firstMatch(
       content,
     );
