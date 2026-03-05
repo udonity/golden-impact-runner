@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.1 — Phase 1.5: CI実用化
+
+### 生成ファイル対応
+
+- **GeneratedFileNormalizer** — `.g.dart` / `.freezed.dart` / `.gr.dart` の変更を元ファイルへ正規化
+  - 元ファイルが存在しない場合は生成ファイル自体をフォールバック
+
+### CLI
+
+- `--format command` — `flutter test <files...>` 形式で標準出力に出力（CI連携用）
+  - 影響テスト0件の場合は何も出力しない
+
+### テスト
+
+- 生成ファイル正規化の単体テスト（`.g.dart` / `.freezed.dart` / `.gr.dart` の3パターン + フォールバック）
+- `--format command` の出力テスト
+- E2Eテスト（生成ファイル変更 → 元ファイル正規化 → Golden Test検出のフルパイプライン）
+
 ## 0.1.0 — Phase 1: ファイルレベルMVP
 
 ### コア機能

@@ -74,12 +74,11 @@ class Runner {
     }
 
     // 2. 変更ファイルを取得
+    final diffProvider = DiffProvider(projectRoot);
     Set<String> changedFiles;
     if (config.changedFiles.isNotEmpty) {
-      final diffProvider = DiffProvider(projectRoot);
       changedFiles = diffProvider.resolveExplicitFiles(config.changedFiles);
     } else {
-      final diffProvider = DiffProvider(projectRoot);
       try {
         changedFiles = await diffProvider.getChangedDartFiles(
           baseBranch: config.baseBranch,
@@ -217,8 +216,8 @@ class Runner {
         }
       } else if (c == '?') {
         buf.write('[^/]');
-      } else if (c == '.') {
-        buf.write(r'\.');
+      } else if (_regExpMetaChars.contains(c)) {
+        buf.write('\\$c');
       } else {
         buf.write(c);
       }
@@ -226,6 +225,22 @@ class Runner {
     buf.write(r'$');
     return RegExp(buf.toString());
   }
+
+  /// 正規表現でエスケープが必要なメタ文字。
+  static const _regExpMetaChars = {
+    '.',
+    '+',
+    '^',
+    r'$',
+    '|',
+    '\\',
+    '(',
+    ')',
+    '[',
+    ']',
+    '{',
+    '}',
+  };
 
   String? _readPackageName(String projectRoot) {
     final pubspecFile = File(p.join(projectRoot, 'pubspec.yaml'));
