@@ -7,7 +7,7 @@ Git差分から変更ファイルを取得し、依存グラフを辿って影�
 
 ## 設計方針
 
-- **外部パッケージ依存ゼロ**（Phase 1）: dart:io + dart:convert のみ
+- **最小限の外部パッケージ依存**（Phase 1）: dart:io + dart:convert + package:path
 - **Phase 2以降**: `package:analyzer` で Widget 単位の解析に拡張
 - Dart CLI ツールとして実装
 
@@ -42,15 +42,16 @@ golden_impact_runner/
 │       │   ├── import_parser.dart   # import/export/part 正規表現解析
 │       │   ├── dependency_graph.dart # 有向グラフ + 逆依存マップ
 │       │   └── golden_test_detector.dart # matchesGoldenFile 検出
-│       ├── git/
-│       │   └── diff_provider.dart   # git diff ラッパー
-│       └── models/
-│           └── file_node.dart       # グラフノードモデル
+│       └── git/
+│           └── diff_provider.dart   # git diff ラッパー
 ├── test/
 │   ├── analyzer/
 │   │   ├── import_parser_test.dart
 │   │   ├── dependency_graph_test.dart
 │   │   └── golden_test_detector_test.dart
+│   ├── cli/
+│   │   ├── args_parser_test.dart
+│   │   └── runner_test.dart
 │   ├── git/
 │   │   └── diff_provider_test.dart
 │   └── integration/

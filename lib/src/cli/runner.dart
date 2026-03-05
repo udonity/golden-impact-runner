@@ -141,6 +141,6 @@ class Runner {
     final match = RegExp(r'^name:\s*(\S+)', multiLine: true).firstMatch(
       content,
     );
-    return match?.group(1);
+    return match?.group(1)?.replaceAll(RegExp(r"""^['"]|['"]$"""), '');
   }
 }
