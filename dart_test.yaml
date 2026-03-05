@@ -1,0 +1,4 @@
+paths:
+  - test/analyzer/
+  - test/git/
+  - test/integration/
