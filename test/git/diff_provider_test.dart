@@ -68,6 +68,193 @@ void main() {
           throwsA(isA<ProcessException>()),
         );
       });
+
+      group('一時gitリポジトリを使ったテスト', () {
+        late Directory tempDir;
+        late String repoPath;
+
+        setUp(() async {
+          tempDir = await Directory.systemTemp.createTemp('diff_provider_test_');
+          repoPath = tempDir.path;
+
+          // gitリポジトリを初期化
+          await Process.run('git', ['init'], workingDirectory: repoPath);
+          await Process.run(
+            'git',
+            ['config', 'user.email', 'test@test.com'],
+            workingDirectory: repoPath,
+          );
+          await Process.run(
+            'git',
+            ['config', 'user.name', 'Test'],
+            workingDirectory: repoPath,
+          );
+
+          // 初期コミット
+          final initFile = File(p.join(repoPath, 'init.dart'));
+          await initFile.writeAsString('// init');
+          await Process.run('git', ['add', '.'], workingDirectory: repoPath);
+          await Process.run(
+            'git',
+            ['commit', '-m', 'init'],
+            workingDirectory: repoPath,
+          );
+
+          // mainブランチを作成（originなしでローカルブランチを使用）
+          await Process.run(
+            'git',
+            ['branch', '-M', 'main'],
+            workingDirectory: repoPath,
+          );
+        });
+
+        tearDown(() async {
+          await tempDir.delete(recursive: true);
+        });
+
+        test('変更された.dartファイルを正しく検出する', () async {
+          // featureブランチを作成して変更をコミット
+          await Process.run(
+            'git',
+            ['checkout', '-b', 'feature'],
+            workingDirectory: repoPath,
+          );
+
+          final dartFile = File(p.join(repoPath, 'lib', 'a.dart'));
+          await dartFile.parent.create(recursive: true);
+          await dartFile.writeAsString('class A {}');
+
+          await Process.run('git', ['add', '.'], workingDirectory: repoPath);
+          await Process.run(
+            'git',
+            ['commit', '-m', 'add a.dart'],
+            workingDirectory: repoPath,
+          );
+
+          final provider = DiffProvider(repoPath);
+          final result = await provider.getChangedDartFiles(
+            baseBranch: 'main',
+            head: 'HEAD',
+          );
+
+          expect(result, hasLength(1));
+          expect(result.first, endsWith('lib/a.dart'));
+        });
+
+        test('.dart以外のファイルは除外される', () async {
+          await Process.run(
+            'git',
+            ['checkout', '-b', 'feature-non-dart'],
+            workingDirectory: repoPath,
+          );
+
+          // .dartと非.dartファイルを両方追加
+          final dartFile = File(p.join(repoPath, 'lib', 'b.dart'));
+          await dartFile.parent.create(recursive: true);
+          await dartFile.writeAsString('class B {}');
+
+          final yamlFile = File(p.join(repoPath, 'pubspec.yaml'));
+          await yamlFile.writeAsString('name: test');
+
+          final mdFile = File(p.join(repoPath, 'README.md'));
+          await mdFile.writeAsString('# Test');
+
+          await Process.run('git', ['add', '.'], workingDirectory: repoPath);
+          await Process.run(
+            'git',
+            ['commit', '-m', 'add mixed files'],
+            workingDirectory: repoPath,
+          );
+
+          final provider = DiffProvider(repoPath);
+          final result = await provider.getChangedDartFiles(
+            baseBranch: 'main',
+            head: 'HEAD',
+          );
+
+          expect(result, hasLength(1));
+          expect(result.first, endsWith('lib/b.dart'));
+        });
+
+        test('変更がない場合は空のSetを返す', () async {
+          final provider = DiffProvider(repoPath);
+          final result = await provider.getChangedDartFiles(
+            baseBranch: 'main',
+            head: 'HEAD',
+          );
+
+          expect(result, isEmpty);
+        });
+
+        test('複数の.dartファイル変更を検出する', () async {
+          await Process.run(
+            'git',
+            ['checkout', '-b', 'feature-multi'],
+            workingDirectory: repoPath,
+          );
+
+          final libDir = Directory(p.join(repoPath, 'lib', 'src'));
+          await libDir.create(recursive: true);
+
+          for (final name in ['x.dart', 'y.dart', 'z.dart']) {
+            final file = File(p.join(libDir.path, name));
+            await file.writeAsString('// $name');
+          }
+
+          await Process.run('git', ['add', '.'], workingDirectory: repoPath);
+          await Process.run(
+            'git',
+            ['commit', '-m', 'add multiple dart files'],
+            workingDirectory: repoPath,
+          );
+
+          final provider = DiffProvider(repoPath);
+          final result = await provider.getChangedDartFiles(
+            baseBranch: 'main',
+            head: 'HEAD',
+          );
+
+          expect(result, hasLength(3));
+        });
+
+        test('返されるパスがプロジェクトルートからの絶対パスである', () async {
+          await Process.run(
+            'git',
+            ['checkout', '-b', 'feature-abs'],
+            workingDirectory: repoPath,
+          );
+
+          final dartFile = File(p.join(repoPath, 'lib', 'abs.dart'));
+          await dartFile.parent.create(recursive: true);
+          await dartFile.writeAsString('// abs');
+
+          await Process.run('git', ['add', '.'], workingDirectory: repoPath);
+          await Process.run(
+            'git',
+            ['commit', '-m', 'add abs.dart'],
+            workingDirectory: repoPath,
+          );
+
+          final provider = DiffProvider(repoPath);
+          final result = await provider.getChangedDartFiles(
+            baseBranch: 'main',
+            head: 'HEAD',
+          );
+
+          expect(result, hasLength(1));
+          final filePath = result.first;
+          expect(p.isAbsolute(filePath), isTrue);
+          expect(filePath, startsWith(repoPath));
+        });
+
+        test('存在しないブランチ指定でDiffExceptionを投げる', () async {
+          final provider = DiffProvider(repoPath);
+          await expectLater(
+            provider.getChangedDartFiles(baseBranch: 'nonexistent-branch'),
+            throwsA(isA<DiffException>()),
+          );
+        });
+      });
     });
 
     group('DiffException', () {
