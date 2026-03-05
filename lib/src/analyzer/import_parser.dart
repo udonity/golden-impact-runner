@@ -10,10 +10,16 @@ class ImportParser {
   final String projectRoot;
   final String packageName;
 
-  // import 'x'; export 'x'; にマッチ
+  // import 'x'; export 'x'; にマッチ（conditional import の条件節も含む）
   static final _importExportPattern = RegExp(
     r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''',
     multiLine: true,
+  );
+
+  // conditional import/export の条件節にマッチ
+  // 例: if (dart.library.io) 'real.dart'
+  static final _conditionalPattern = RegExp(
+    r'''if\s*\([^)]+\)\s+['"]([^'"]+)['"]''',
   );
 
   // part 'x'; にマッチするが part of 'x'; にはマッチしない。
@@ -23,15 +29,40 @@ class ImportParser {
     multiLine: true,
   );
 
+  // 行コメント（// ...）にマッチ
+  static final _lineCommentPattern = RegExp(r'//.*$', multiLine: true);
+
+  // ブロックコメント（/* ... */）にマッチ
+  static final _blockCommentPattern = RegExp(r'/\*[\s\S]*?\*/');
+
+  /// ソースコードからコメントを除去する。
+  /// 文字列リテラル内の // や /* は考慮しない簡易実装。
+  String _stripComments(String content) {
+    // ブロックコメントを先に除去（行コメントとの競合を避ける）
+    var stripped = content.replaceAll(_blockCommentPattern, '');
+    // 行コメントを除去
+    stripped = stripped.replaceAll(_lineCommentPattern, '');
+    return stripped;
+  }
+
   /// Dart ソースから import/export/part の URI をすべて抽出する。
+  /// コメント内のディレクティブは無視する。
   List<String> extractDependencyUris(String content) {
+    final stripped = _stripComments(content);
     final uris = <String>[];
 
-    for (final match in _importExportPattern.allMatches(content)) {
+    for (final match in _importExportPattern.allMatches(stripped)) {
       uris.add(match.group(1)!);
+      // 同一行の conditional clause を抽出
+      final fullLine = match.input.substring(match.start);
+      final lineEnd = fullLine.indexOf('\n');
+      final line = lineEnd == -1 ? fullLine : fullLine.substring(0, lineEnd);
+      for (final cMatch in _conditionalPattern.allMatches(line)) {
+        uris.add(cMatch.group(1)!);
+      }
     }
 
-    for (final match in _partPattern.allMatches(content)) {
+    for (final match in _partPattern.allMatches(stripped)) {
       uris.add(match.group(1)!);
     }
 

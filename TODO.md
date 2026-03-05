@@ -25,9 +25,9 @@ Git差分から影響を受けるFlutter Golden Testを特定するCLIツール�
 
 ### 未対応のimportパターン
 
-- [ ] conditional import（`import 'stub.dart' if (dart.library.io) 'real.dart'`）
-- [ ] deferred import（`import '...' deferred as ...`）
-- [ ] コメント内のimport文を無視する処理
+- [x] conditional import（`import 'stub.dart' if (dart.library.io) 'real.dart'`）
+- [x] deferred import（`import '...' deferred as ...`）
+- [x] コメント内のimport文を無視する処理
 
 ### 実用性の改善
 

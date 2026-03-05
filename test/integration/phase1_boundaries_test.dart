@@ -165,11 +165,8 @@ void main() {
     });
   });
 
-  group('[KNOWN LIMITATION] 複数行ブロックコメント内の import は誤検出される', () {
-    test('ブロックコメントの途中行にある import は誤検出される', () {
-      // /*
-      //  * コメント内だが、行頭が空白 + import でマッチしてしまう
-      //  */
+  group('[SUPPORTED] 複数行ブロックコメント内の import は正しく無視される', () {
+    test('ブロックコメントの途中行にある import は検出されない', () {
       final content = '''
 /*
  * Some documentation:
@@ -178,24 +175,22 @@ void main() {
 ''';
       final uris = parser.extractDependencyUris(content);
 
-      // 行頭が空白 + import のためマッチしてしまう
-      expect(uris, contains('../models/theme_data.dart'),
-          reason: 'Phase 1 は複数行ブロックコメント内の行を区別できない');
+      // コメント除去処理によりブロックコメント内の import は無視される
+      expect(uris, isEmpty,
+          reason: 'ブロックコメント内の import は正しく除外される');
     });
   });
 
-  group('[KNOWN LIMITATION] conditional import の代替パスは追跡されない', () {
-    test('if 条件の代替パスは依存に含まれない', () {
-      // import 'a.dart' if (dart.library.html) 'b.dart';
-      // → 'a.dart' のみ追跡、'b.dart' は追跡されない
+  group('[SUPPORTED] conditional import の代替パスも追跡される', () {
+    test('if 条件の代替パスも依存に含まれる', () {
       final uris = parser.extractDependencyUris(
         "import '../models/theme_data.dart' if (dart.library.html) '../models/theme_data_web.dart';",
       );
 
-      // 正規表現は最初の引用符で囲まれたURIのみ抽出
+      // デフォルトパスと代替パスの両方が追跡される
       expect(uris, contains('../models/theme_data.dart'));
-      expect(uris, isNot(contains('../models/theme_data_web.dart')),
-          reason: 'Phase 1 は conditional import の代替パスを追跡しない');
+      expect(uris, contains('../models/theme_data_web.dart'),
+          reason: 'conditional import の代替パスも依存として追跡される');
     });
   });
 
