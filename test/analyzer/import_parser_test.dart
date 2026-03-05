@@ -106,6 +106,128 @@ class Foo {
         final uris = parser.extractDependencyUris(content);
         expect(uris, isEmpty);
       });
+
+      group('conditional import', () {
+        test('extracts both default and conditional URIs', () {
+          const content = '''
+import 'stub.dart' if (dart.library.io) 'real.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, containsAll(['stub.dart', 'real.dart']));
+        });
+
+        test('extracts multiple conditional clauses', () {
+          const content = '''
+import 'default.dart' if (dart.library.io) 'io.dart' if (dart.library.html) 'html.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(
+              uris, containsAll(['default.dart', 'io.dart', 'html.dart']));
+        });
+
+        test('handles conditional import with package URIs', () {
+          const content = '''
+import 'package:my_app/src/stub.dart' if (dart.library.io) 'package:my_app/src/real.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, containsAll([
+            'package:my_app/src/stub.dart',
+            'package:my_app/src/real.dart',
+          ]));
+        });
+
+        test('handles conditional export', () {
+          const content = '''
+export 'stub.dart' if (dart.library.io) 'real.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, containsAll(['stub.dart', 'real.dart']));
+        });
+      });
+
+      group('deferred import', () {
+        test('extracts deferred import URI', () {
+          const content = '''
+import 'package:my_app/src/heavy.dart' deferred as heavy;
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, contains('package:my_app/src/heavy.dart'));
+        });
+
+        test('extracts deferred import with relative path', () {
+          const content = '''
+import '../heavy/module.dart' deferred as module;
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, contains('../heavy/module.dart'));
+        });
+      });
+
+      group('コメント内のimport文を無視', () {
+        test('ignores single-line comment with import', () {
+          const content = '''
+// import 'package:my_app/src/old.dart';
+import 'package:my_app/src/new.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, ['package:my_app/src/new.dart']);
+        });
+
+        test('ignores block comment with import', () {
+          const content = '''
+/* import 'package:my_app/src/old.dart'; */
+import 'package:my_app/src/new.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, ['package:my_app/src/new.dart']);
+        });
+
+        test('ignores multiline block comment with imports', () {
+          const content = '''
+/*
+import 'package:my_app/src/a.dart';
+export 'package:my_app/src/b.dart';
+part 'c.g.dart';
+*/
+import 'package:my_app/src/real.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, ['package:my_app/src/real.dart']);
+        });
+
+        test('ignores doc comment with import', () {
+          const content = '''
+/// import 'package:my_app/src/example.dart';
+/// 使用例：import 'foo.dart';
+import 'package:my_app/src/real.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, ['package:my_app/src/real.dart']);
+        });
+
+        test('handles nested block comments correctly', () {
+          const content = '''
+import 'package:my_app/src/before.dart';
+/* コメント開始
+import 'package:my_app/src/commented.dart';
+コメント終了 */
+import 'package:my_app/src/after.dart';
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, [
+            'package:my_app/src/before.dart',
+            'package:my_app/src/after.dart',
+          ]);
+        });
+
+        test('handles inline comment after real import', () {
+          const content = '''
+import 'package:my_app/src/real.dart'; // import用
+''';
+          final uris = parser.extractDependencyUris(content);
+          expect(uris, ['package:my_app/src/real.dart']);
+        });
+      });
     });
 
     group('resolveUri', () {
