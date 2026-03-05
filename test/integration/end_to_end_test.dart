@@ -189,7 +189,257 @@ void main() {
     });
   });
 
-  // ─── 8. Runner の出力内容検証 ───
+  // ─── 8. エラーハンドリング ───
+
+  group('エラーハンドリング', () {
+    test('存在しないプロジェクトでエラーコード1と具体的メッセージを返す', () async {
+      final errBuf = StringBuffer();
+      final outBuf = StringBuffer();
+      final runner = Runner(
+        errSink: _StringSink(errBuf),
+        outSink: _StringSink(outBuf),
+      );
+
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: '/nonexistent/project/path',
+        changedFiles: ['lib/a.dart'],
+      ));
+
+      expect(exitCode, 1);
+      expect(errBuf.toString(), contains('does not exist'));
+      expect(outBuf.toString(), isEmpty);
+    });
+
+    test('pubspec.yaml がないディレクトリでエラーコード1と具体的メッセージを返す',
+        () async {
+      final tmpDir = Directory.systemTemp.createTempSync('e2e_test_');
+      try {
+        final errBuf = StringBuffer();
+        final outBuf = StringBuffer();
+        final runner = Runner(
+          errSink: _StringSink(errBuf),
+          outSink: _StringSink(outBuf),
+        );
+
+        final exitCode = await runner.run(RunnerConfig(
+          projectRoot: tmpDir.path,
+          changedFiles: ['lib/a.dart'],
+        ));
+
+        expect(exitCode, 1);
+        expect(errBuf.toString(), contains('pubspec.yaml'));
+        expect(errBuf.toString(), contains('not found'));
+      } finally {
+        tmpDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('pubspec.yaml に name がないディレクトリでエラーコード1を返す', () async {
+      final tmpDir = Directory.systemTemp.createTempSync('e2e_test_');
+      try {
+        File(p.join(tmpDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('version: 1.0.0\n');
+        final errBuf = StringBuffer();
+        final runner = Runner(
+          errSink: _StringSink(errBuf),
+          outSink: _StringSink(StringBuffer()),
+        );
+
+        final exitCode = await runner.run(RunnerConfig(
+          projectRoot: tmpDir.path,
+          changedFiles: ['lib/a.dart'],
+        ));
+
+        expect(exitCode, 1);
+        expect(errBuf.toString(), contains('name'));
+        expect(errBuf.toString(), contains('pubspec.yaml'));
+      } finally {
+        tmpDir.deleteSync(recursive: true);
+      }
+    });
+  });
+
+  // ─── 9. --exclude オプション ───
+
+  group('--exclude オプション', () {
+    test('除外パターンで特定ディレクトリの golden test を除外できる', () async {
+      final outBuf = StringBuffer();
+      final runner = Runner(outSink: _StringSink(outBuf));
+
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/theme_data.dart'],
+        format: OutputFormat.json,
+        excludePatterns: ['**/widgets/**'],
+      ));
+
+      expect(exitCode, 0);
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+
+      // widgets 配下のテストが除外されている
+      expect(goldenTests, isNot(anyElement(contains('widgets/'))));
+      // screens, utils のテストは残っている
+      expect(goldenTests, contains(
+        p.join('test', 'screens', 'home_screen_golden_test.dart'),
+      ));
+    });
+
+    test('複数の除外パターンで複数ディレクトリを除外できる', () async {
+      final outBuf = StringBuffer();
+      final runner = Runner(outSink: _StringSink(outBuf));
+
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/theme_data.dart'],
+        format: OutputFormat.json,
+        excludePatterns: ['**/widgets/**', '**/screens/**'],
+      ));
+
+      expect(exitCode, 0);
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+
+      expect(goldenTests, isNot(anyElement(contains('widgets/'))));
+      expect(goldenTests, isNot(anyElement(contains('screens/'))));
+      // utils のテストは残っている
+      expect(goldenTests, isNotEmpty);
+    });
+
+    test('拡張子パターンで特定の生成ファイルを除外できる', () async {
+      final outBuf = StringBuffer();
+      final runner = Runner(outSink: _StringSink(outBuf));
+
+      // *.g.dart 除外（fixture には無いが、パターン適用でエラーにならないこと）
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/theme_data.dart'],
+        format: OutputFormat.json,
+        excludePatterns: ['**/*.g.dart'],
+      ));
+
+      expect(exitCode, 0);
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      // fixture に .g.dart は無いので全テスト残る
+      expect((json['golden_tests'] as List), hasLength(4));
+    });
+
+    test('除外なしと除外ありで結果が正しく変わる', () async {
+      // 除外なし
+      final outWithout = StringBuffer();
+      final r1 = Runner(outSink: _StringSink(outWithout));
+      await r1.run(RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/theme_data.dart'],
+        format: OutputFormat.json,
+      ));
+      final jsonWithout =
+          jsonDecode(outWithout.toString()) as Map<String, dynamic>;
+      final testsWithout = (jsonWithout['golden_tests'] as List).cast<String>();
+
+      // 除外あり
+      final outWith = StringBuffer();
+      final r2 = Runner(outSink: _StringSink(outWith));
+      await r2.run(RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/theme_data.dart'],
+        format: OutputFormat.json,
+        excludePatterns: ['**/widgets/**'],
+      ));
+      final jsonWith =
+          jsonDecode(outWith.toString()) as Map<String, dynamic>;
+      final testsWith = (jsonWith['golden_tests'] as List).cast<String>();
+
+      // 除外なしの方が多い
+      expect(testsWithout.length, greaterThan(testsWith.length));
+      // 除外された分だけ差がある
+      final diff = testsWithout.toSet().difference(testsWith.toSet());
+      expect(diff, everyElement(contains('widgets/')));
+    });
+  });
+
+  // ─── 10. Alchemist スタイルの golden test 検出 ───
+
+  group('Alchemist スタイルの golden test', () {
+    late String alchemistRoot;
+
+    setUp(() {
+      alchemistRoot = p.normalize(
+        p.join(p.current, 'test', 'fixtures_alchemist'),
+      );
+    });
+
+    test('goldenTest( パターンのファイルを golden test として検出する', () async {
+      final outBuf = StringBuffer();
+      final runner = Runner(outSink: _StringSink(outBuf));
+
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: alchemistRoot,
+        changedFiles: ['lib/widgets/red_button.dart'],
+        format: OutputFormat.json,
+      ));
+
+      expect(exitCode, 0);
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+
+      expect(goldenTests, contains(
+        p.join('test', 'widgets', 'red_button_golden_test.dart'),
+      ));
+    });
+
+    test('barrel export 経由の依存で関連する golden test も検出する', () async {
+      final outBuf = StringBuffer();
+      final runner = Runner(outSink: _StringSink(outBuf));
+
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: alchemistRoot,
+        changedFiles: ['lib/widgets/red_button.dart'],
+        format: OutputFormat.json,
+      ));
+
+      expect(exitCode, 0);
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+
+      // red_button → widgets.dart (barrel) → contact_list_tile_golden_test
+      expect(goldenTests, contains(
+        p.join('test', 'widgets', 'contact_list_tile_golden_test.dart'),
+      ));
+    });
+
+    test('直接依存のない widget 変更では関連テストのみ検出される', () async {
+      final outBuf = StringBuffer();
+      final runner = Runner(outSink: _StringSink(outBuf));
+
+      final exitCode = await runner.run(RunnerConfig(
+        projectRoot: alchemistRoot,
+        changedFiles: ['lib/widgets/contact_list_tile.dart'],
+        format: OutputFormat.json,
+      ));
+
+      expect(exitCode, 0);
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+
+      expect(goldenTests, contains(
+        p.join('test', 'widgets', 'contact_list_tile_golden_test.dart'),
+      ));
+    });
+
+    test('依存グラフのファイル数とエッジ数が正しい', () {
+      final graph = DependencyGraph.build(
+        projectRoot: alchemistRoot,
+        packageName: 'alchemist_example',
+      );
+
+      // lib/widgets/: red_button, contact_list_tile, widgets (barrel)
+      // test/widgets/: red_button_golden_test, contact_list_tile_golden_test
+      expect(graph.allFiles.length, 5);
+    });
+  });
+
+  // ─── 11. Runner の出力内容検証 ───
 
   group('Runner 出力内容検証', () {
     test('テキスト出力が影響のある golden test パスのみを含む', () async {
@@ -280,6 +530,22 @@ void main() {
       expect(json['changed_files'], isNotEmpty);
     });
   });
+}
+
+/// テスト用の [StringSink] ラッパー。
+class _StringSink implements StringSink {
+  _StringSink(this._buf);
+  final StringBuffer _buf;
+
+  @override
+  void write(Object? object) => _buf.write(object);
+  @override
+  void writeAll(Iterable objects, [String separator = '']) =>
+      _buf.writeAll(objects, separator);
+  @override
+  void writeCharCode(int charCode) => _buf.writeCharCode(charCode);
+  @override
+  void writeln([Object? object = '']) => _buf.writeln(object);
 }
 
 /// stdout をキャプチャするヘルパー

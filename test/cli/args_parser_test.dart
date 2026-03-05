@@ -65,6 +65,19 @@ void main() {
         final config = ArgsParser.parse(['-v']);
         expect(config!.verbose, isTrue);
       });
+
+      test('--exclude で除外パターンを指定できる', () {
+        final config = ArgsParser.parse(['--exclude', '**/*.g.dart']);
+        expect(config!.excludePatterns, ['**/*.g.dart']);
+      });
+
+      test('--exclude を複数回指定できる', () {
+        final config = ArgsParser.parse([
+          '--exclude', '**/*.g.dart',
+          '--exclude', '**/*.freezed.dart',
+        ]);
+        expect(config!.excludePatterns, ['**/*.g.dart', '**/*.freezed.dart']);
+      });
     });
 
     group('複合オプション', () {
@@ -144,6 +157,13 @@ void main() {
       test('--format に不正な値を渡すとFormatExceptionを投げる', () {
         expect(
           () => ArgsParser.parse(['--format', 'xml']),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('--exclude に値がない場合FormatExceptionを投げる', () {
+        expect(
+          () => ArgsParser.parse(['--exclude']),
           throwsA(isA<FormatException>()),
         );
       });
