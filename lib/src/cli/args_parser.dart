@@ -14,7 +14,7 @@ Options:
   --head <ref>        Head ref for git diff (default: HEAD)
   --changed <file>    Specify changed file(s) explicitly (repeatable)
   --project <dir>     Project root directory (default: current directory)
-  --format <fmt>      Output format: text, json (default: text)
+  --format <fmt>      Output format: text, json, command (default: text)
   --exclude <pattern> Exclude files matching glob pattern (repeatable)
   --verbose, -v       Print diagnostic info to stderr
   --help, -h          Show this help message
@@ -59,6 +59,7 @@ Options:
           format = switch (fmt) {
             'json' => OutputFormat.json,
             'text' => OutputFormat.text,
+            'command' => OutputFormat.command,
             _ => throw FormatException('Unknown format: $fmt'),
           };
           i++;

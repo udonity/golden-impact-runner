@@ -7,7 +7,7 @@ import '../analyzer/dependency_graph.dart';
 import '../analyzer/golden_test_detector.dart';
 import '../git/diff_provider.dart';
 
-enum OutputFormat { text, json }
+enum OutputFormat { text, json, command }
 
 class RunnerConfig {
   const RunnerConfig({
@@ -91,6 +91,9 @@ class Runner {
       }
     }
 
+    // 2.5. 生成ファイルを元ファイルに正規化
+    changedFiles = GeneratedFileNormalizer.normalize(changedFiles);
+
     if (changedFiles.isEmpty) {
       if (config.verbose) {
         _err.writeln('No changed .dart files found.');
@@ -140,7 +143,17 @@ class Runner {
     );
 
     // 6. 結果を出力
-    if (config.format == OutputFormat.json) {
+    if (config.format == OutputFormat.command) {
+      if (filteredTests.isNotEmpty) {
+        final sorted = filteredTests
+            .map((f) => p.relative(f, from: projectRoot))
+            .toList()
+          ..sort();
+        _out.writeln('flutter test ${sorted.join(' ')}');
+      }
+      // 影響テスト0件の場合は何も出力しない
+      return 0;
+    } else if (config.format == OutputFormat.json) {
       final output = {
         'changed_files': changedFiles
             .map((f) => p.relative(f, from: projectRoot))

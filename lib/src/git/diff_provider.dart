@@ -46,6 +46,34 @@ class DiffProvider {
   }
 }
 
+/// 生成ファイル（.g.dart, .freezed.dart, .gr.dart）を元ファイルに正規化する。
+///
+/// 元ファイルが存在すればそちらを返し、存在しなければ生成ファイル自体を返す。
+class GeneratedFileNormalizer {
+  /// 正規化対象のサフィックス一覧。
+  static const _generatedSuffixes = ['.g.dart', '.freezed.dart', '.gr.dart'];
+
+  /// 変更ファイル群を正規化して返す。
+  static Set<String> normalize(Set<String> files) {
+    return files.map(_normalizeOne).toSet();
+  }
+
+  static String _normalizeOne(String filePath) {
+    for (final suffix in _generatedSuffixes) {
+      if (filePath.endsWith(suffix)) {
+        final basePath =
+            '${filePath.substring(0, filePath.length - suffix.length)}.dart';
+        if (File(basePath).existsSync()) {
+          return basePath;
+        }
+        // 元ファイルが存在しない場合は生成ファイル自体を返す
+        return filePath;
+      }
+    }
+    return filePath;
+  }
+}
+
 class DiffException implements Exception {
   DiffException(this.message);
   final String message;

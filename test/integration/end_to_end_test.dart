@@ -439,7 +439,104 @@ void main() {
     });
   });
 
-  // ─── 11. Runner の出力内容検証 ───
+  // ─── 11. 生成ファイル正規化 ───
+
+  group('生成ファイル正規化', () {
+    test('.g.dart の変更が元ファイル経由で golden test に波及する', () async {
+      final outBuf = StringBuffer();
+      final r = Runner(outSink: _StringSink(outBuf));
+      final config = RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/user.g.dart'],
+        format: OutputFormat.json,
+      );
+
+      final exitCode = await r.run(config);
+      expect(exitCode, 0);
+
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      // changed_files は正規化後の user.dart になる
+      final changedFiles = (json['changed_files'] as List).cast<String>();
+      expect(changedFiles, contains(p.join('lib', 'src', 'models', 'user.dart')));
+      expect(changedFiles, isNot(contains(
+        p.join('lib', 'src', 'models', 'user.g.dart'),
+      )));
+
+      // user.dart → app_state.dart → user_card.dart → user_card_golden_test.dart
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+      expect(goldenTests, contains(
+        p.join('test', 'widgets', 'user_card_golden_test.dart'),
+      ));
+    });
+
+    test('.freezed.dart の変更が元ファイル経由で golden test に波及する', () async {
+      final outBuf = StringBuffer();
+      final r = Runner(outSink: _StringSink(outBuf));
+      final config = RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/app_state.freezed.dart'],
+        format: OutputFormat.json,
+      );
+
+      final exitCode = await r.run(config);
+      expect(exitCode, 0);
+
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final changedFiles = (json['changed_files'] as List).cast<String>();
+      expect(changedFiles, contains(
+        p.join('lib', 'src', 'models', 'app_state.dart'),
+      ));
+
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+      expect(goldenTests, contains(
+        p.join('test', 'widgets', 'user_card_golden_test.dart'),
+      ));
+    });
+
+    test('.gr.dart の変更が元ファイル経由で golden test に波及する', () async {
+      final outBuf = StringBuffer();
+      final r = Runner(outSink: _StringSink(outBuf));
+      final config = RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/navigation/app_router.gr.dart'],
+        format: OutputFormat.json,
+      );
+
+      final exitCode = await r.run(config);
+      expect(exitCode, 0);
+
+      final json = jsonDecode(outBuf.toString()) as Map<String, dynamic>;
+      final changedFiles = (json['changed_files'] as List).cast<String>();
+      expect(changedFiles, contains(
+        p.join('lib', 'src', 'navigation', 'app_router.dart'),
+      ));
+
+      final goldenTests = (json['golden_tests'] as List).cast<String>();
+      expect(goldenTests, contains(
+        p.join('test', 'screens', 'router_screen_golden_test.dart'),
+      ));
+    });
+
+    test('--format command で生成ファイル変更時にflutter testコマンドを出力する',
+        () async {
+      final outBuf = StringBuffer();
+      final r = Runner(outSink: _StringSink(outBuf));
+      final config = RunnerConfig(
+        projectRoot: fixturesRoot,
+        changedFiles: ['lib/src/models/user.g.dart'],
+        format: OutputFormat.command,
+      );
+
+      final exitCode = await r.run(config);
+      expect(exitCode, 0);
+
+      final output = outBuf.toString().trim();
+      expect(output, startsWith('flutter test '));
+      expect(output, contains('user_card_golden_test.dart'));
+    });
+  });
+
+  // ─── 12. Runner の出力内容検証 ───
 
   group('Runner 出力内容検証', () {
     test('テキスト出力が影響のある golden test パスのみを含む', () async {
