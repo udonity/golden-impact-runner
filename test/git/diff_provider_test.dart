@@ -257,6 +257,84 @@ void main() {
       });
     });
 
+    group('GeneratedFileNormalizer', () {
+      late Directory tempDir;
+
+      setUp(() async {
+        tempDir =
+            await Directory.systemTemp.createTemp('generated_normalizer_test_');
+      });
+
+      tearDown(() async {
+        await tempDir.delete(recursive: true);
+      });
+
+      test('.g.dart を元ファイルに正規化する', () {
+        // 元ファイルを作成
+        final baseFile = File(p.join(tempDir.path, 'model.dart'));
+        baseFile.writeAsStringSync('class Model {}');
+
+        final generatedPath = p.join(tempDir.path, 'model.g.dart');
+        final result = GeneratedFileNormalizer.normalize({generatedPath});
+        expect(result, {baseFile.path});
+      });
+
+      test('.freezed.dart を元ファイルに正規化する', () {
+        final baseFile = File(p.join(tempDir.path, 'state.dart'));
+        baseFile.writeAsStringSync('class State {}');
+
+        final generatedPath = p.join(tempDir.path, 'state.freezed.dart');
+        final result = GeneratedFileNormalizer.normalize({generatedPath});
+        expect(result, {baseFile.path});
+      });
+
+      test('.gr.dart を元ファイルに正規化する', () {
+        final baseFile = File(p.join(tempDir.path, 'router.dart'));
+        baseFile.writeAsStringSync('class Router {}');
+
+        final generatedPath = p.join(tempDir.path, 'router.gr.dart');
+        final result = GeneratedFileNormalizer.normalize({generatedPath});
+        expect(result, {baseFile.path});
+      });
+
+      test('元ファイルが存在しない場合は生成ファイル自体を返す', () {
+        final generatedPath = p.join(tempDir.path, 'missing.g.dart');
+        final result = GeneratedFileNormalizer.normalize({generatedPath});
+        expect(result, {generatedPath});
+      });
+
+      test('通常の.dartファイルはそのまま返す', () {
+        final filePath = p.join(tempDir.path, 'widget.dart');
+        final result = GeneratedFileNormalizer.normalize({filePath});
+        expect(result, {filePath});
+      });
+
+      test('生成ファイルと通常ファイルが混在する場合に正しく処理する', () {
+        final baseFile = File(p.join(tempDir.path, 'model.dart'));
+        baseFile.writeAsStringSync('class Model {}');
+
+        final normalFile = p.join(tempDir.path, 'widget.dart');
+        final generatedPath = p.join(tempDir.path, 'model.g.dart');
+
+        final result =
+            GeneratedFileNormalizer.normalize({normalFile, generatedPath});
+        expect(result, {normalFile, baseFile.path});
+      });
+
+      test('複数の生成ファイルが同じ元ファイルを指す場合に重複を排除する', () {
+        final baseFile = File(p.join(tempDir.path, 'model.dart'));
+        baseFile.writeAsStringSync('class Model {}');
+
+        final gPath = p.join(tempDir.path, 'model.g.dart');
+        final freezedPath = p.join(tempDir.path, 'model.freezed.dart');
+
+        final result =
+            GeneratedFileNormalizer.normalize({gPath, freezedPath});
+        expect(result, hasLength(1));
+        expect(result, {baseFile.path});
+      });
+    });
+
     group('DiffException', () {
       test('toStringがメッセージを含む', () {
         final e = DiffException('test error');

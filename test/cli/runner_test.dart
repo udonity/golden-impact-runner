@@ -217,6 +217,53 @@ void main() {
       });
     });
 
+    group('--format command 出力', () {
+      test('影響テストがある場合に flutter test コマンドを出力する', () async {
+        final outBuf = StringBuffer();
+        final r = Runner(outSink: _StringSink(outBuf));
+        final config = RunnerConfig(
+          projectRoot: fixturesRoot,
+          changedFiles: ['lib/src/widgets/button.dart'],
+          format: OutputFormat.command,
+        );
+
+        final exitCode = await r.run(config);
+        expect(exitCode, 0);
+
+        final output = outBuf.toString().trim();
+        expect(output, startsWith('flutter test '));
+        expect(output, contains('test/'));
+      });
+
+      test('影響テストがない場合は空出力を返す', () async {
+        final outBuf = StringBuffer();
+        final r = Runner(outSink: _StringSink(outBuf));
+        final config = RunnerConfig(
+          projectRoot: fixturesRoot,
+          changedFiles: ['lib/src/screens/settings_screen.dart'],
+          format: OutputFormat.command,
+        );
+
+        final exitCode = await r.run(config);
+        expect(exitCode, 0);
+        expect(outBuf.toString(), isEmpty);
+      });
+
+      test('変更ファイルが .dart 以外の場合は空出力を返す', () async {
+        final outBuf = StringBuffer();
+        final r = Runner(outSink: _StringSink(outBuf));
+        final config = RunnerConfig(
+          projectRoot: fixturesRoot,
+          changedFiles: ['nonexistent.yaml'],
+          format: OutputFormat.command,
+        );
+
+        final exitCode = await r.run(config);
+        expect(exitCode, 0);
+        expect(outBuf.toString(), isEmpty);
+      });
+    });
+
     group('RunnerConfig', () {
       test('デフォルト値が正しい', () {
         final config = RunnerConfig(projectRoot: '.');
