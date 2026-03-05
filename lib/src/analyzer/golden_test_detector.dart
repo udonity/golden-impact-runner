@@ -2,17 +2,27 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// `matchesGoldenFile` の使用を走査して Golden Test ファイルを検出する。
+/// Golden Test ファイルを検出する。
+///
+/// 以下のパターンをサポート:
+/// - `matchesGoldenFile(` — Flutter 標準の golden test
+/// - `goldenTest(` — Alchemist パッケージ
+/// - `GoldenTestGroup(` / `GoldenTestScenario(` — Alchemist のヘルパー
 class GoldenTestDetector {
   GoldenTestDetector(this.projectRoot);
 
   final String projectRoot;
 
-  static final _goldenPattern = RegExp(r'matchesGoldenFile\s*\(');
+  static final _goldenPatterns = [
+    RegExp(r'matchesGoldenFile\s*\('),
+    RegExp(r'goldenTest\s*\('),
+    RegExp(r'GoldenTestGroup\s*\('),
+    RegExp(r'GoldenTestScenario\s*\('),
+  ];
 
   /// ファイル内容に golden test アサーションが含まれるか判定する。
   bool isGoldenTest(String content) {
-    return _goldenPattern.hasMatch(content);
+    return _goldenPatterns.any((p) => p.hasMatch(content));
   }
 
   /// test/ ディレクトリ配下のすべての golden test ファイルを検索する。

@@ -15,6 +15,7 @@ Options:
   --changed <file>    Specify changed file(s) explicitly (repeatable)
   --project <dir>     Project root directory (default: current directory)
   --format <fmt>      Output format: text, json (default: text)
+  --exclude <pattern> Exclude files matching glob pattern (repeatable)
   --verbose, -v       Print diagnostic info to stderr
   --help, -h          Show this help message
 ''';
@@ -25,6 +26,7 @@ Options:
     var baseBranch = 'origin/main';
     var head = 'HEAD';
     final changedFiles = <String>[];
+    final excludePatterns = <String>[];
     var format = OutputFormat.text;
     var verbose = false;
 
@@ -45,6 +47,9 @@ Options:
           i++;
         case '--changed':
           changedFiles.add(_nextArg(args, i, '--changed'));
+          i++;
+        case '--exclude':
+          excludePatterns.add(_nextArg(args, i, '--exclude'));
           i++;
         case '--project':
           projectRoot = _nextArg(args, i, '--project');
@@ -67,6 +72,7 @@ Options:
       baseBranch: baseBranch,
       head: head,
       changedFiles: changedFiles,
+      excludePatterns: excludePatterns,
       format: format,
       verbose: verbose,
     );

@@ -25,6 +25,43 @@ void main() {
         expect(detector.isGoldenTest(content), isTrue);
       });
 
+      test('returns true for content with alchemist goldenTest', () {
+        const content = '''
+        goldenTest(
+          'renders correctly',
+          fileName: 'my_widget',
+          builder: () => GoldenTestGroup(
+            children: [
+              GoldenTestScenario(
+                name: 'default',
+                child: MyWidget(),
+              ),
+            ],
+          ),
+        );
+        ''';
+        expect(detector.isGoldenTest(content), isTrue);
+      });
+
+      test('returns true for content with only GoldenTestGroup', () {
+        const content = '''
+        testWidgets('golden', (tester) async {
+          await tester.pumpWidget(GoldenTestGroup(children: []));
+        });
+        ''';
+        expect(detector.isGoldenTest(content), isTrue);
+      });
+
+      test('returns true for content with only GoldenTestScenario', () {
+        const content = '''
+        GoldenTestScenario(
+          name: 'test',
+          child: MyWidget(),
+        );
+        ''';
+        expect(detector.isGoldenTest(content), isTrue);
+      });
+
       test('returns false for regular test content', () {
         const content = '''
         expect(find.text('Hello'), findsOneWidget);
