@@ -16,9 +16,13 @@ void main() {
     });
 
     test('discovers all dart files', () {
-      // lib: button.dart, theme_data.dart, home_screen.dart, settings_screen.dart
-      // test: button_golden_test.dart, home_screen_golden_test.dart, settings_screen_test.dart
-      expect(graph.allFiles.length, 7);
+      // lib: button.dart, theme_data.dart, home_screen.dart, settings_screen.dart,
+      //       widgets.dart, commented_imports.dart, conditional_import.dart,
+      //       show_hide.dart, part_parent.dart, part_child.dart
+      // test: button_golden_test.dart, home_screen_golden_test.dart,
+      //       settings_screen_test.dart, all_widgets_golden_test.dart,
+      //       show_hide_golden_test.dart, part_parent_golden_test.dart
+      expect(graph.allFiles.length, 16);
     });
 
     test('builds forward dependencies correctly', () {
