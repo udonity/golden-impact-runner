@@ -2,15 +2,15 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Provides the list of changed .dart files from git diff.
+/// git diff から変更された .dart ファイルの一覧を提供する。
 class DiffProvider {
   DiffProvider(this.projectRoot);
 
   final String projectRoot;
 
-  /// Get changed .dart files between [baseBranch] and [head].
+  /// [baseBranch] と [head] の間で変更された .dart ファイルを取得する。
   ///
-  /// Defaults to comparing against `origin/main`.
+  /// デフォルトでは `origin/main` との比較。
   Future<Set<String>> getChangedDartFiles({
     String baseBranch = 'origin/main',
     String head = 'HEAD',
@@ -37,7 +37,7 @@ class DiffProvider {
         .toSet();
   }
 
-  /// Get changed .dart files from explicit file list (for --changed flag).
+  /// 明示的なファイルリストから変更された .dart ファイルを取得する（--changed フラグ用）。
   Set<String> resolveExplicitFiles(List<String> files) {
     return files
         .map((f) => p.isAbsolute(f) ? f : p.normalize(p.join(projectRoot, f)))

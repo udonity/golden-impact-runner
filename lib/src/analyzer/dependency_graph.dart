@@ -5,11 +5,10 @@ import 'package:path/path.dart' as p;
 
 import 'import_parser.dart';
 
-/// A directed dependency graph of Dart files.
+/// Dart ファイルの有向依存グラフ。
 ///
-/// Builds forward (dependsOn) and reverse (dependedOnBy) maps,
-/// then supports BFS traversal to find all impacted files from a
-/// set of changed files.
+/// 順方向（dependsOn）と逆方向（dependedOnBy）のマップを構築し、
+/// 変更ファイル集合から BFS で影響を受ける全ファイルを探索する。
 class DependencyGraph {
   DependencyGraph._({
     required this.dependsOn,
@@ -17,18 +16,18 @@ class DependencyGraph {
     required this.allFiles,
   });
 
-  /// file -> set of files it depends on (imports)
+  /// ファイル → そのファイルが依存するファイル集合（import 先）
   final Map<String, Set<String>> dependsOn;
 
-  /// file -> set of files that depend on it (reverse edges)
+  /// ファイル → そのファイルに依存するファイル集合（逆辺）
   final Map<String, Set<String>> dependedOnBy;
 
-  /// All known .dart files in the project
+  /// プロジェクト内の既知の .dart ファイルすべて
   final Set<String> allFiles;
 
-  /// Build a dependency graph by scanning all .dart files under [projectRoot].
+  /// [projectRoot] 配下のすべての .dart ファイルを走査して依存グラフを構築する。
   ///
-  /// Scans both `lib/` and `test/` directories.
+  /// `lib/` と `test/` の両ディレクトリを走査する。
   factory DependencyGraph.build({
     required String projectRoot,
     required String packageName,
@@ -68,10 +67,10 @@ class DependencyGraph {
     );
   }
 
-  /// Find all files impacted by changes to [changedFiles].
+  /// [changedFiles] の変更によって影響を受ける全ファイルを検索する。
   ///
-  /// Traverses the reverse dependency graph (dependedOnBy) using BFS
-  /// to find all transitively affected files.
+  /// 逆依存グラフ（dependedOnBy）を BFS で走査し、
+  /// 推移的に影響を受けるファイルをすべて返す。
   Set<String> findImpactedFiles(Set<String> changedFiles) {
     final visited = <String>{};
     final queue = Queue<String>();

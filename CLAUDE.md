@@ -30,3 +30,4 @@ lib/src/git/                   → git diff ラッパー
 - Dart標準のlintルール（`package:lints/recommended.yaml`相当）
 - テストは `test/` にソースと同じディレクトリ構造で配置
 - 外部パッケージ依存は最小限に（Phase 1では package:path のみ）
+- **コメントは日本語で記述する**（コード中のコメント `//` `///` およびドキュメンテーションコメントすべて）
