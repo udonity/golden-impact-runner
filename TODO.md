@@ -45,18 +45,18 @@ CI上で影響Golden Testに絞って `flutter test` を実行するために必
 
 ### 生成ファイル対応
 
-- [ ] `.g.dart` / `.freezed.dart` / `.gr.dart` の変更を元ファイルへ正規化
-- [ ] 元ファイルが存在しない場合のフォールバック
+- [x] `.g.dart` / `.freezed.dart` / `.gr.dart` の変更を元ファイルへ正規化
+- [x] 元ファイルが存在しない場合のフォールバック
 
 ### `flutter test` コマンド出力
 
-- [ ] `--format command` で `flutter test <files...>` を標準出力に出力
-- [ ] 影響テスト0件の場合は空文字列を出力
+- [x] `--format command` で `flutter test <files...>` を標準出力に出力
+- [x] 影響テスト0件の場合は空文字列を出力
 
 ### テスト
 
-- [ ] 生成ファイル正規化の単体テスト
-- [ ] `--format command` の出力テスト
+- [x] 生成ファイル正規化の単体テスト
+- [x] `--format command` の出力テスト
 - [ ] 実プロジェクトでのCI動作検証
 
 ---
