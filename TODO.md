@@ -21,7 +21,7 @@ Git差分から影響を受けるFlutter Golden Testを特定するCLIツール�
 - [x] DependencyGraph 単体テスト（順方向・逆方向・推移的依存・無関係ファイル除外）
 - [x] GoldenTestDetector 単体テスト（検出・非検出・フィルタリング）
 - [x] E2Eテスト（fixture Flutterプロジェクトを使った統合テスト）
-- [ ] DiffProvider 単体テスト（git操作のモック/実環境テスト）
+- [x] DiffProvider 単体テスト（git操作のモック/実環境テスト）
 
 ### 未対応のimportパターン
 
