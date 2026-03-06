@@ -16,6 +16,7 @@ Options:
   --project <dir>     Project root directory (default: current directory)
   --format <fmt>      Output format: text, json, command (default: text)
   --exclude <pattern> Exclude files matching glob pattern (repeatable)
+  --analysis-mode <mode>  Analysis mode: file, widget (default: file)
   --verbose, -v       Print diagnostic info to stderr
   --help, -h          Show this help message
 ''';
@@ -28,6 +29,7 @@ Options:
     final changedFiles = <String>[];
     final excludePatterns = <String>[];
     var format = OutputFormat.text;
+    var analysisMode = AnalysisMode.file;
     var verbose = false;
 
     for (var i = 0; i < args.length; i++) {
@@ -63,6 +65,14 @@ Options:
             _ => throw FormatException('Unknown format: $fmt'),
           };
           i++;
+        case '--analysis-mode':
+          final mode = _nextArg(args, i, '--analysis-mode');
+          analysisMode = switch (mode) {
+            'file' => AnalysisMode.file,
+            'widget' => AnalysisMode.widget,
+            _ => throw FormatException('Unknown analysis mode: $mode'),
+          };
+          i++;
         default:
           throw FormatException('Unknown argument: $arg');
       }
@@ -75,6 +85,7 @@ Options:
       changedFiles: changedFiles,
       excludePatterns: excludePatterns,
       format: format,
+      analysisMode: analysisMode,
       verbose: verbose,
     );
   }
