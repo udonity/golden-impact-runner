@@ -64,14 +64,22 @@ CI上で影響Golden Testに絞って `flutter test` を実行するために必
 ## Phase 2: 精度向上
 
 ファイル単位の粗い解析からWidget単位の精密な解析へ拡張する。
-CI実用化後、オーバー検出が問題になった場合に着手。
+[デザインドキュメント](docs/plans/2026-03-07-widget-analysis-design.md) | [実装計画](docs/plans/2026-03-07-widget-analysis-impl.md)
 
-### Widget単位の依存解析
+### Widget単位の依存解析（MVP完了）
 
-- [ ] `package:analyzer` 導入（AST解析・型解決）
-- [ ] WidgetUsageVisitor — `InstanceCreationExpression` からWidget使用を検出
-- [ ] Widget型判定（`StatelessWidget`/`StatefulWidget` のサブクラスか）
-- [ ] Widget単位の依存グラフ構築（1ファイル複数Widget対応）
+- [x] `package:analyzer` 導入（AST解析）
+- [x] WidgetExtractor — `ClassDeclaration` ASTからWidget定義を抽出
+- [x] WidgetUsageDetector — コンストラクタ呼び出し・namedコンストラクタからWidget使用を検出
+- [x] WidgetDependencyGraph — Widget単位の依存グラフ構築 + BFS逆引き（1ファイル複数Widget対応）
+- [x] `--analysis-mode widget` CLIオプション（file/widget切り替え）
+- [x] フィクスチャプロジェクト + 単体テスト + E2Eテスト
+
+### Widget単位解析の既知の制限
+
+- [ ] 中間基底クラス経由の依存（`extends BaseWidget`）→ ファイルレベルにフォールバック
+- [ ] staticメソッド呼び出し（`MyWidget.of(context)`）が namedコンストラクタと区別できない（偽陽性）
+- [ ] 関数経由の間接Widget生成（`buildDefaultButton()`）は検出不可
 
 ### モノレポ対応
 
