@@ -183,6 +183,7 @@ test/screens/home_screen_golden_test.dart
 - **同名 Widget の衝突**: 異なるファイルに同名の Widget が定義されている場合、後に走査された方で上書きされる。プロジェクト内で Widget 名を一意にすることを前提とする。
 - **中間基底クラス**: `extends MyBaseWidget` のような間接継承は Widget として検出されない（`StatelessWidget`/`StatefulWidget` の直接継承のみ）。
 - **名前ベースの使用検出**: 型解決なしの構文解析のため、Widget と同名の関数呼び出しが false positive になる可能性がある。
+- **Widget定義ファイルのutilityコード**: Widget定義を含むファイルが定数や関数もexportしている場合、そのutility部分のみの変更でもWidgetエッジのみで伝搬される。結果として、importのみでWidgetを使わないファイルが影響範囲から漏れる可能性がある（false negative）。過検出削減とのトレードオフとして許容。
 
 ## Phase 3 以降の拡張ポイント
 
