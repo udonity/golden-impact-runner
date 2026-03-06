@@ -64,7 +64,7 @@ void main() {
   // ─── 2. 精度改善の検証 ───
 
   group('精度改善', () {
-    test('button.dart 変更 → 両モードで button, card, dialog のテストが影響', () async {
+    test('button.dart 変更 → 両モードとも Widget 使用チェーンの golden test が影響', () async {
       final fileResult = await goldenTestsForFile(
         ['lib/widgets/button.dart'],
       );
@@ -72,12 +72,36 @@ void main() {
         ['lib/widgets/button.dart'],
       );
 
-      // 両モードとも button, card, dialog の golden test が影響
+      // 両モードとも AppButton を使っている golden test は影響
       for (final result in [fileResult, widgetResult]) {
         expect(result, contains(p.join('test', 'button_golden_test.dart')));
         expect(result, contains(p.join('test', 'card_golden_test.dart')));
         expect(result, contains(p.join('test', 'dialog_golden_test.dart')));
       }
+    });
+
+    test('button.dart 変更 → widget モードは import のみで Widget 未使用のテストを除外', () async {
+      final fileResult = await goldenTestsForFile(
+        ['lib/widgets/button.dart'],
+      );
+      final widgetResult = await goldenTestsForWidget(
+        ['lib/widgets/button.dart'],
+      );
+
+      final constantsTest = p.join('test', 'button_constants_golden_test.dart');
+
+      // file モード: button_constants.dart は button.dart を import → 影響に含まれる
+      expect(fileResult, contains(constantsTest),
+        reason: 'file モードでは import チェーンで button_constants_golden_test が影響に含まれるべき');
+
+      // widget モード: button.dart は Widget 定義を持つため Widget エッジのみ伝搬。
+      // button_constants.dart は AppButton を使っていないため影響から除外される
+      expect(widgetResult, isNot(contains(constantsTest)),
+        reason: 'widget モードでは Widget 未使用の button_constants_golden_test は除外されるべき');
+
+      // widget 結果は file 結果の真部分集合
+      expect(widgetResult.length, lessThan(fileResult.length),
+        reason: 'widget モードは file モードより少ない結果を返すべき');
     });
   });
 

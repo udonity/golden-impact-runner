@@ -2,9 +2,10 @@
 import 'dart:collection';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
+import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/ast/ast.dart';
 
-import '../import_parser.dart';
+import '../dependency_graph.dart';
 import 'widget_extractor.dart';
 import 'widget_usage_detector.dart';
 
@@ -14,16 +15,18 @@ import 'widget_usage_detector.dart';
 /// Widget の定義・使用関係を重ねて精密な影響範囲を算出する。
 ///
 /// 入出力はファイルパス単位。中間の解析精度だけが Widget 単位に向上する。
+///
+/// 制約: 同名の Widget が異なるファイルに定義されている場合、
+/// 後に走査されたファイルの定義で上書きされる（MVP の既知の制限事項）。
 class WidgetDependencyGraph {
   WidgetDependencyGraph._({
-    required this.fileDependedOnBy,
+    required this.fileGraph,
     required this.widgetToFiles,
     required this.fileToWidgets,
-    required this.allFiles,
   });
 
-  /// ファイルレベルの逆依存マップ（Phase 1 と同じ）
-  final Map<String, Set<String>> fileDependedOnBy;
+  /// ファイルレベルの依存グラフ（Phase 1 の DependencyGraph を再利用）
+  final DependencyGraph fileGraph;
 
   /// Widget名 → そのWidgetを使用しているファイルのセット
   final Map<String, Set<String>> widgetToFiles;
@@ -31,52 +34,38 @@ class WidgetDependencyGraph {
   /// ファイルパス → そのファイルで定義されている Widget 名のセット
   final Map<String, Set<String>> fileToWidgets;
 
-  /// プロジェクト内の全 .dart ファイル
-  final Set<String> allFiles;
+  /// プロジェクト内の全 .dart ファイル（fileGraph から委譲）
+  Set<String> get allFiles => fileGraph.allFiles;
 
   /// プロジェクトを解析して Widget 依存グラフを構築する。
   factory WidgetDependencyGraph.build({
     required String projectRoot,
     required String packageName,
   }) {
-    final parser = ImportParser(projectRoot, packageName);
-    final extractor = WidgetExtractor();
+    // 1. ファイルレベルの依存グラフを構築（DependencyGraph に委譲）
+    final fileGraph = DependencyGraph.build(
+      projectRoot: projectRoot,
+      packageName: packageName,
+    );
 
-    // 1. ファイルレベルの依存グラフを構築（Phase 1 と同じロジック）
-    final fileDependedOnBy = <String, Set<String>>{};
-    final allFiles = <String>{};
-
-    final dirsToScan = ['lib', 'test']
-        .map((d) => Directory(p.join(projectRoot, d)))
-        .where((d) => d.existsSync());
-
-    final fileContents = <String, String>{};
-
-    for (final dir in dirsToScan) {
-      final dartFiles = dir
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.dart'));
-
-      for (final file in dartFiles) {
-        final filePath = p.normalize(file.path);
-        allFiles.add(filePath);
-        fileContents[filePath] = file.readAsStringSync();
-
-        final deps = parser.parseDependencies(filePath);
-
-        for (final dep in deps) {
-          fileDependedOnBy.putIfAbsent(dep, () => {}).add(filePath);
-        }
+    // 2. 全ファイルを1回だけパースして AST をキャッシュ
+    final parsedUnits = <String, CompilationUnit>{};
+    for (final filePath in fileGraph.allFiles) {
+      final file = File(filePath);
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
+        parsedUnits[filePath] = parseString(content: content).unit;
       }
     }
 
-    // 2. Widget 定義を収集
+    // 3. Widget 定義を収集（キャッシュ済み AST を使用）
+    final extractor = WidgetExtractor();
     final fileToWidgets = <String, Set<String>>{};
     final widgetDefinitions = <String, WidgetDefinition>{};
 
-    for (final entry in fileContents.entries) {
-      final widgets = extractor.extractWidgets(entry.key, entry.value);
+    for (final entry in parsedUnits.entries) {
+      final widgets =
+          extractor.extractWidgetsFromUnit(entry.key, entry.value);
       if (widgets.isNotEmpty) {
         fileToWidgets[entry.key] = widgets.map((w) => w.name).toSet();
         for (final w in widgets) {
@@ -85,13 +74,14 @@ class WidgetDependencyGraph {
       }
     }
 
-    // 3. Widget 使用を検出
+    // 4. Widget 使用を検出（同じキャッシュ済み AST を再利用）
     final knownWidgets = widgetDefinitions.keys.toSet();
     final usageDetector = WidgetUsageDetector(knownWidgets: knownWidgets);
     final widgetToFiles = <String, Set<String>>{};
 
-    for (final entry in fileContents.entries) {
-      final usages = usageDetector.detectUsages(entry.key, entry.value);
+    for (final entry in parsedUnits.entries) {
+      final usages =
+          usageDetector.detectUsagesFromUnit(entry.key, entry.value);
       for (final usage in usages) {
         widgetToFiles
             .putIfAbsent(usage.widgetName, () => {})
@@ -100,10 +90,9 @@ class WidgetDependencyGraph {
     }
 
     return WidgetDependencyGraph._(
-      fileDependedOnBy: fileDependedOnBy,
+      fileGraph: fileGraph,
       widgetToFiles: widgetToFiles,
       fileToWidgets: fileToWidgets,
-      allFiles: allFiles,
     );
   }
 
@@ -111,8 +100,8 @@ class WidgetDependencyGraph {
   ///
   /// Widget 単位の解析により、ファイルレベルより精密な影響範囲を算出:
   /// 1. 変更ファイル内の Widget 定義を特定
-  /// 2. それらの Widget を使用しているファイルを逆引き
-  /// 3. Widget を含まないファイルの変更はファイルレベルの import チェーンにフォールバック
+  /// 2. Widget 定義を持つファイル → Widget 使用エッジのみで伝搬（過検出を削減）
+  /// 3. Widget 定義を持たないファイル → ファイルレベルの import チェーンにフォールバック
   /// 4. BFS で推移的に影響を伝搬
   Set<String> findImpactedFiles(Set<String> changedFiles) {
     final visited = <String>{};
@@ -129,9 +118,12 @@ class WidgetDependencyGraph {
     while (queue.isNotEmpty) {
       final current = queue.removeFirst();
 
-      // ファイルに Widget 定義がある場合、Widget 使用経由の依存を追跡
       final widgets = fileToWidgets[current];
-      if (widgets != null && widgets.isNotEmpty) {
+      final hasWidgetDefinitions = widgets != null && widgets.isNotEmpty;
+
+      if (hasWidgetDefinitions) {
+        // Widget 定義を持つファイル → Widget 使用エッジのみで伝搬
+        // ファイルレベルの import チェーンを辿らないことで過検出を削減する
         for (final widgetName in widgets) {
           final usedByFiles = widgetToFiles[widgetName];
           if (usedByFiles != null) {
@@ -143,15 +135,15 @@ class WidgetDependencyGraph {
             }
           }
         }
-      }
-
-      // ファイルレベルの逆依存も常に追跡（フォールバック + 非Widget依存の伝搬）
-      final fileDependents = fileDependedOnBy[current];
-      if (fileDependents != null) {
-        for (final dep in fileDependents) {
-          if (!visited.contains(dep)) {
-            visited.add(dep);
-            queue.add(dep);
+      } else {
+        // Widget 定義を持たないファイル → ファイルレベルの逆依存にフォールバック
+        final fileDependents = fileGraph.dependedOnBy[current];
+        if (fileDependents != null) {
+          for (final dep in fileDependents) {
+            if (!visited.contains(dep)) {
+              visited.add(dep);
+              queue.add(dep);
+            }
           }
         }
       }

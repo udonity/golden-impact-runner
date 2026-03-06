@@ -161,9 +161,31 @@ test/screens/home_screen_golden_test.dart
 }
 ```
 
-## Phase 2 以降の拡張ポイント
+## Phase 2: Widget 単位解析
 
-- `package:analyzer` による Widget 単位の依存解析
+`--analysis-mode=widget` で有効化。`lib/src/analyzer/widget/` に配置。
+
+### 処理フロー
+
+```
+1. DependencyGraph を構築（Phase 1 と同じ）
+2. 全 .dart ファイルの AST を1回パース
+3. Widget 定義を収集（StatelessWidget/StatefulWidget を直接継承するクラス）
+4. Widget 使用を検出（コンストラクタ呼び出しの名前マッチ）
+5. BFS で影響伝搬:
+   - Widget 定義を持つファイル → Widget 使用エッジのみで伝搬
+   - Widget 定義を持たないファイル → ファイルレベル逆依存にフォールバック
+6. Golden Test ファイルをフィルタして出力
+```
+
+### 既知の制約
+
+- **同名 Widget の衝突**: 異なるファイルに同名の Widget が定義されている場合、後に走査された方で上書きされる。プロジェクト内で Widget 名を一意にすることを前提とする。
+- **中間基底クラス**: `extends MyBaseWidget` のような間接継承は Widget として検出されない（`StatelessWidget`/`StatefulWidget` の直接継承のみ）。
+- **名前ベースの使用検出**: 型解決なしの構文解析のため、Widget と同名の関数呼び出しが false positive になる可能性がある。
+
+## Phase 3 以降の拡張ポイント
+
 - モノレポ対応（pubspec.yaml の path 依存解決）
 - インクリメンタルキャッシュ（.golden_impact_cache/）
 - GitHub Actions 統合テンプレート

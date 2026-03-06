@@ -35,8 +35,14 @@ class WidgetUsageDetector {
   /// ファイル内で使用されている Widget を検出する。
   List<WidgetUsage> detectUsages(String filePath, String content) {
     final parseResult = parseString(content: content);
-    final unit = parseResult.unit;
+    return detectUsagesFromUnit(filePath, parseResult.unit);
+  }
 
+  /// パース済み AST から Widget 使用を検出する（2重パース回避用）。
+  List<WidgetUsage> detectUsagesFromUnit(
+    String filePath,
+    CompilationUnit unit,
+  ) {
     final visitor = _UsageVisitor(filePath, knownWidgets);
     unit.visitChildren(visitor);
     return visitor.usages;

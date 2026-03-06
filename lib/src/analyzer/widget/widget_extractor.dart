@@ -36,8 +36,14 @@ class WidgetExtractor {
   /// ファイルの AST を解析し、Widget 定義を返す。
   List<WidgetDefinition> extractWidgets(String filePath, String content) {
     final parseResult = parseString(content: content);
-    final unit = parseResult.unit;
+    return extractWidgetsFromUnit(filePath, parseResult.unit);
+  }
 
+  /// パース済み AST から Widget 定義を返す（2重パース回避用）。
+  List<WidgetDefinition> extractWidgetsFromUnit(
+    String filePath,
+    CompilationUnit unit,
+  ) {
     final visitor = _WidgetVisitor(filePath);
     unit.visitChildren(visitor);
     return visitor.widgets;
