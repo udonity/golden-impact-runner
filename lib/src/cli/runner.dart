@@ -5,9 +5,12 @@ import 'package:path/path.dart' as p;
 
 import '../analyzer/dependency_graph.dart';
 import '../analyzer/golden_test_detector.dart';
+import '../analyzer/widget/widget_dependency_graph.dart';
 import '../git/diff_provider.dart';
 
 enum OutputFormat { text, json, command }
+
+enum AnalysisMode { file, widget }
 
 class RunnerConfig {
   const RunnerConfig({
@@ -17,6 +20,7 @@ class RunnerConfig {
     this.changedFiles = const [],
     this.excludePatterns = const [],
     this.format = OutputFormat.text,
+    this.analysisMode = AnalysisMode.file,
     this.verbose = false,
   });
 
@@ -28,6 +32,7 @@ class RunnerConfig {
   /// 除外するファイルパターン（glob形式、例: `**/*.g.dart`）
   final List<String> excludePatterns;
   final OutputFormat format;
+  final AnalysisMode analysisMode;
   final bool verbose;
 }
 
@@ -107,21 +112,33 @@ class Runner {
       }
     }
 
-    // 3. 依存グラフを構築
-    final graph = DependencyGraph.build(
-      projectRoot: projectRoot,
-      packageName: packageName,
-    );
-
-    if (config.verbose) {
-      _err.writeln(
-        'Dependency graph: ${graph.allFiles.length} files, '
-        '${graph.dependsOn.values.fold<int>(0, (sum, s) => sum + s.length)} edges',
+    // 3. 依存グラフを構築し、4. BFS で影響ファイルを検索
+    final Set<String> impactedFiles;
+    if (config.analysisMode == AnalysisMode.widget) {
+      final widgetGraph = WidgetDependencyGraph.build(
+        projectRoot: projectRoot,
+        packageName: packageName,
       );
+      if (config.verbose) {
+        _err.writeln(
+          'Widget dependency graph: ${widgetGraph.allFiles.length} files, '
+          '${widgetGraph.fileToWidgets.values.fold<int>(0, (sum, s) => sum + s.length)} widgets',
+        );
+      }
+      impactedFiles = widgetGraph.findImpactedFiles(changedFiles);
+    } else {
+      final graph = DependencyGraph.build(
+        projectRoot: projectRoot,
+        packageName: packageName,
+      );
+      if (config.verbose) {
+        _err.writeln(
+          'Dependency graph: ${graph.allFiles.length} files, '
+          '${graph.dependsOn.values.fold<int>(0, (sum, s) => sum + s.length)} edges',
+        );
+      }
+      impactedFiles = graph.findImpactedFiles(changedFiles);
     }
-
-    // 4. BFS で影響ファイルをすべて検索
-    final impactedFiles = graph.findImpactedFiles(changedFiles);
 
     if (config.verbose) {
       _err.writeln('Impacted files (${impactedFiles.length}):');

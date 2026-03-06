@@ -85,6 +85,30 @@ void main() {
       });
     });
 
+    group('--analysis-mode', () {
+      test('デフォルトは file', () {
+        final config = ArgsParser.parse([]);
+        expect(config!.analysisMode, AnalysisMode.file);
+      });
+
+      test('--analysis-mode=widget でwidgetモードになる', () {
+        final config = ArgsParser.parse(['--analysis-mode', 'widget']);
+        expect(config!.analysisMode, AnalysisMode.widget);
+      });
+
+      test('--analysis-mode=file でfileモードになる', () {
+        final config = ArgsParser.parse(['--analysis-mode', 'file']);
+        expect(config!.analysisMode, AnalysisMode.file);
+      });
+
+      test('不正な値で FormatException', () {
+        expect(
+          () => ArgsParser.parse(['--analysis-mode', 'invalid']),
+          throwsFormatException,
+        );
+      });
+    });
+
     group('複合オプション', () {
       test('複数のオプションを同時に指定できる', () {
         final config = ArgsParser.parse([
